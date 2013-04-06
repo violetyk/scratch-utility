@@ -61,9 +61,10 @@ imap <script> <silent> <Plug>InsShowScratchBuffer
 
 command! -nargs=0 Scratch :call <SID>ShowScratchBuffer()
 
-if !exists('g:scratchBackupFile')
-  let g:scratchBackupFile = '' " So that users can easily find this var.
-endif
+" default variables
+let g:scratchBackupFile  = get(g:, 'scratchBackupFile', '')
+let g:scratchSplitOption = get(g:, 'scratchSplitOption', {'horizontal' : 1, 'vertical' : 0, 'take_over_filetype' : 0})
+
 aug ScratchBackup
   au!
   au VimLeavePre * :call <SID>BackupScratchBuffer()
@@ -84,17 +85,38 @@ function! <SID>ShowScratchBuffer()
     let _isf = &isfname
     set isfname-=\
     set isfname-=[
-    if exists('+shellslash')
-      exec "sp \\\\". s:SCRATCH_BUFFER_NAME
+
+    let ft = ''
+    if get(g:scratchSplitOption, 'take_over_filetype') == 1
+      let ft = &ft
+    endif
+
+    if get(g:scratchSplitOption, 'vertical') == 1
+      let cmd = 'vsp '
     else
-      exec "sp \\". s:SCRATCH_BUFFER_NAME
+      let cmd = 'sp '
+    endif
+
+    if exists('+shellslash')
+      exec cmd . "\\\\". s:SCRATCH_BUFFER_NAME
+    else
+      exec cmd . "\\". s:SCRATCH_BUFFER_NAME
     endif
     let &isfname = _isf
     let s:buffer_number = bufnr('%')
+
+    if get(g:scratchSplitOption, 'take_over_filetype') == 1 && ft != ''
+      exec 'setlocal ft=' . ft
+    endif
   else
     let buffer_win=bufwinnr(s:buffer_number)
     if(buffer_win == -1)
-      exec 'sb '. s:buffer_number
+      if get(g:scratchSplitOption, 'vertical') == 1
+        let cmd = 'vert sb '
+      else
+        let cmd = 'sb '
+      endif
+      exec cmd . s:buffer_number
     else
       exec buffer_win.'wincmd w'
     endif
